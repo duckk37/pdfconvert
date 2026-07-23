@@ -1,0 +1,6 @@
+{
+  "appId": "com.duckk37.pdftools",
+  "appName": "PDF Tools",
+  "webDir": ".",
+  "bundledWebRuntime": false
+}
