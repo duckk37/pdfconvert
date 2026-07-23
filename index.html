@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PDF Tools - Free PDF solutions</title>
+    <!-- Google Fonts: Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- FontAwesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- PDF-Lib -->
+    <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
+    <!-- PDF.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <header class="app-header">
+        <div class="header-left">
+            <div class="logo" onclick="navigateTo('dashboard')">
+                <i class="fa-solid fa-file-pdf"></i>
+                <span>PDF Tools</span>
+            </div>
+            <nav class="nav-links">
+                <a href="#" onclick="navigateTo('dashboard')" class="active"><i class="fa-solid fa-border-all"></i> All tools</a>
+            </nav>
+        </div>
+        <div class="header-right">
+            <button class="icon-btn"><i class="fa-solid fa-download"></i></button>
+            <button class="icon-btn"><i class="fa-solid fa-moon"></i></button>
+        </div>
+    </header>
+
+    <main id="app-content">
+        <!-- Dashboard View -->
+        <section id="view-dashboard" class="view-section active">
+            <div class="hero-section">
+                <div class="hero-icon">
+                    <i class="fa-solid fa-toolbox"></i>
+                </div>
+                <h1>PDF Tools</h1>
+                <p>Free and easy-to-use PDF tools that make you more productive.</p>
+            </div>
+
+            <div class="tools-grid" id="tools-grid">
+                <!-- Tool cards will be injected here by JS -->
+            </div>
+        </section>
+
+        <!-- Tool: Merge PDF -->
+        <section id="view-merge" class="view-section tool-container">
+            <div class="tool-header">
+                <h2>Merge PDF</h2>
+                <p>Combine multiple PDFs into one unified document.</p>
+            </div>
+            <div class="workspace">
+                <div class="drop-zone" id="merge-drop-zone">
+                    <i class="fa-solid fa-cloud-arrow-up"></i>
+                    <h3>Choose files</h3>
+                    <p>or drop files here</p>
+                    <input type="file" id="merge-file-input" multiple accept="application/pdf" hidden>
+                </div>
+                <div class="file-list" id="merge-file-list"></div>
+                <div class="action-bar hidden" id="merge-action-bar">
+                    <button class="btn btn-primary" id="btn-do-merge">Merge PDF <i class="fa-solid fa-chevron-right"></i></button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Tool: Split PDF -->
+        <section id="view-split" class="view-section tool-container">
+            <div class="tool-header">
+                <h2>Split PDF</h2>
+                <p>Extract pages from your PDF or split it into multiple files.</p>
+            </div>
+            <div class="workspace">
+                <div class="drop-zone" id="split-drop-zone">
+                    <i class="fa-solid fa-cloud-arrow-up"></i>
+                    <h3>Choose file</h3>
+                    <p>or drop file here</p>
+                    <input type="file" id="split-file-input" accept="application/pdf" hidden>
+                </div>
+                <div class="file-preview" id="split-preview-area" style="display: none;">
+                    <p id="split-file-name"></p>
+                    <div class="split-options">
+                        <label>Split every <input type="number" id="split-every-pages" value="1" min="1"> pages</label>
+                    </div>
+                </div>
+                <div class="action-bar hidden" id="split-action-bar">
+                    <button class="btn btn-primary" id="btn-do-split">Split PDF <i class="fa-solid fa-chevron-right"></i></button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Tool: Remove PDF pages -->
+        <section id="view-remove" class="view-section tool-container">
+            <div class="tool-header">
+                <h2>Remove PDF pages</h2>
+                <p>Remove pages from a PDF document online.</p>
+            </div>
+            <div class="workspace">
+                <div class="drop-zone" id="remove-drop-zone">
+                    <i class="fa-solid fa-cloud-arrow-up"></i>
+                    <h3>Choose file</h3>
+                    <p>or drop file here</p>
+                    <input type="file" id="remove-file-input" accept="application/pdf" hidden>
+                </div>
+                <div class="file-preview" id="remove-preview-area" style="display: none;">
+                    <p id="remove-file-name"></p>
+                    <p style="margin-top:10px; font-size: 14px; color: var(--text-muted);">Click on the pages you want to remove:</p>
+                    <div class="page-selection-grid" id="remove-page-grid">
+                        <!-- Pages rendered as canvases will go here -->
+                    </div>
+                </div>
+                <div class="action-bar hidden" id="remove-action-bar">
+                    <button class="btn btn-primary" id="btn-do-remove">Remove pages <i class="fa-solid fa-chevron-right"></i></button>
+                </div>
+            </div>
+        </section>
+        
+        <!-- Tool: Extract PDF pages -->
+        <section id="view-extract" class="view-section tool-container">
+            <div class="tool-header">
+                <h2>Extract PDF pages</h2>
+                <p>Extract specific pages from a PDF to a new file.</p>
+            </div>
+            <div class="workspace">
+                <div class="drop-zone" id="extract-drop-zone">
+                    <i class="fa-solid fa-file-export"></i>
+                    <h3>Choose file</h3>
+                    <input type="file" id="extract-file-input" accept="application/pdf" hidden>
+                </div>
+                <div class="file-preview" id="extract-preview-area" style="display: none;">
+                    <p id="extract-file-name"></p>
+                    <div class="split-options">
+                        <p style="font-size: 14px; margin-bottom: 8px;">Pages to extract (e.g. 1, 3, 5-10):</p>
+                        <input type="text" id="extract-pages-input" placeholder="1, 3, 5-10" style="width: 100%;">
+                    </div>
+                </div>
+                <div class="action-bar hidden" id="extract-action-bar">
+                    <button class="btn btn-primary" id="btn-do-extract">Extract pages <i class="fa-solid fa-chevron-right"></i></button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Tool: Rotate PDF pages -->
+        <section id="view-rotate" class="view-section tool-container">
+            <div class="tool-header">
+                <h2>Rotate PDF pages</h2>
+                <p>Rotate pages in a PDF document.</p>
+            </div>
+            <div class="workspace">
+                <div class="drop-zone" id="rotate-drop-zone">
+                    <i class="fa-solid fa-rotate-right"></i>
+                    <h3>Choose file</h3>
+                    <input type="file" id="rotate-file-input" accept="application/pdf" hidden>
+                </div>
+                <div class="file-preview" id="rotate-preview-area" style="display: none;">
+                    <p id="rotate-file-name"></p>
+                    <div class="split-options" style="display:flex; gap:10px;">
+                        <label><input type="radio" name="rotate-angle" value="90" checked> 90° Right</label>
+                        <label><input type="radio" name="rotate-angle" value="-90"> 90° Left</label>
+                        <label><input type="radio" name="rotate-angle" value="180"> 180°</label>
+                    </div>
+                </div>
+                <div class="action-bar hidden" id="rotate-action-bar">
+                    <button class="btn btn-primary" id="btn-do-rotate">Rotate PDF <i class="fa-solid fa-chevron-right"></i></button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Tool: Protect PDF -->
+        <section id="view-protect" class="view-section tool-container">
+            <div class="tool-header">
+                <h2>Protect PDF</h2>
+                <p>Add a password to encrypt your PDF.</p>
+            </div>
+            <div class="workspace">
+                <div class="drop-zone" id="protect-drop-zone">
+                    <i class="fa-solid fa-lock"></i>
+                    <h3>Choose file</h3>
+                    <input type="file" id="protect-file-input" accept="application/pdf" hidden>
+                </div>
+                <div class="file-preview" id="protect-preview-area" style="display: none;">
+                    <p id="protect-file-name"></p>
+                    <div class="split-options">
+                        <input type="password" id="protect-password-input" placeholder="Enter password" style="width: 100%;">
+                    </div>
+                </div>
+                <div class="action-bar hidden" id="protect-action-bar">
+                    <button class="btn btn-primary" id="btn-do-protect">Protect PDF <i class="fa-solid fa-chevron-right"></i></button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Tool: Add Watermark -->
+        <section id="view-watermark" class="view-section tool-container">
+            <div class="tool-header">
+                <h2>Add Watermark</h2>
+                <p>Stamp an text watermark onto your PDF.</p>
+            </div>
+            <div class="workspace">
+                <div class="drop-zone" id="watermark-drop-zone">
+                    <i class="fa-solid fa-droplet"></i>
+                    <h3>Choose file</h3>
+                    <input type="file" id="watermark-file-input" accept="application/pdf" hidden>
+                </div>
+                <div class="file-preview" id="watermark-preview-area" style="display: none;">
+                    <p id="watermark-file-name"></p>
+                    <div class="split-options">
+                        <input type="text" id="watermark-text-input" placeholder="Confidential" style="width: 100%;">
+                    </div>
+                </div>
+                <div class="action-bar hidden" id="watermark-action-bar">
+                    <button class="btn btn-primary" id="btn-do-watermark">Add Watermark <i class="fa-solid fa-chevron-right"></i></button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Tool: Add Page Numbers -->
+        <section id="view-pagenum" class="view-section tool-container">
+            <div class="tool-header">
+                <h2>Add Page Numbers</h2>
+                <p>Insert page numbers into PDF.</p>
+            </div>
+            <div class="workspace">
+                <div class="drop-zone" id="pagenum-drop-zone">
+                    <i class="fa-solid fa-list-ol"></i>
+                    <h3>Choose file</h3>
+                    <input type="file" id="pagenum-file-input" accept="application/pdf" hidden>
+                </div>
+                <div class="file-preview" id="pagenum-preview-area" style="display: none;">
+                    <p id="pagenum-file-name"></p>
+                    <p style="margin-top:10px; color:var(--text-muted);">Page numbers will be added at the bottom center.</p>
+                </div>
+                <div class="action-bar hidden" id="pagenum-action-bar">
+                    <button class="btn btn-primary" id="btn-do-pagenum">Add Numbers <i class="fa-solid fa-chevron-right"></i></button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Tool: Unlock PDF -->
+        <section id="view-unlock" class="view-section tool-container">
+            <div class="tool-header">
+                <h2>Unlock PDF</h2>
+                <p>Remove PDF password security (requires current password).</p>
+            </div>
+            <div class="workspace">
+                <div class="drop-zone" id="unlock-drop-zone">
+                    <i class="fa-solid fa-unlock"></i>
+                    <h3>Choose file</h3>
+                    <input type="file" id="unlock-file-input" accept="application/pdf" hidden>
+                </div>
+                <div class="file-preview" id="unlock-preview-area" style="display: none;">
+                    <p id="unlock-file-name"></p>
+                    <div class="split-options">
+                        <input type="password" id="unlock-password-input" placeholder="Current password" style="width: 100%;">
+                    </div>
+                </div>
+                <div class="action-bar hidden" id="unlock-action-bar">
+                    <button class="btn btn-primary" id="btn-do-unlock">Unlock PDF <i class="fa-solid fa-chevron-right"></i></button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Tool: Rearrange PDF -->
+        <section id="view-rearrange" class="view-section tool-container">
+            <div class="tool-header">
+                <h2>Rearrange PDF pages</h2>
+                <p>Change the order of pages in your PDF.</p>
+            </div>
+            <div class="workspace">
+                <div class="drop-zone" id="rearrange-drop-zone">
+                    <i class="fa-solid fa-layer-group"></i>
+                    <h3>Choose file</h3>
+                    <input type="file" id="rearrange-file-input" accept="application/pdf" hidden>
+                </div>
+                <div class="file-preview" id="rearrange-preview-area" style="display: none;">
+                    <p id="rearrange-file-name"></p>
+                    <div class="split-options">
+                        <p style="font-size: 14px; margin-bottom: 8px;">New page order (e.g. 3,1,2,4-5):</p>
+                        <input type="text" id="rearrange-pages-input" placeholder="3, 1, 2, 4-5" style="width: 100%;">
+                    </div>
+                </div>
+                <div class="action-bar hidden" id="rearrange-action-bar">
+                    <button class="btn btn-primary" id="btn-do-rearrange">Rearrange <i class="fa-solid fa-chevron-right"></i></button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Tool: Images to PDF -->
+        <section id="view-img2pdf" class="view-section tool-container">
+            <div class="tool-header">
+                <h2>Images to PDF</h2>
+                <p>Convert JPG/PNG images to a PDF document.</p>
+            </div>
+            <div class="workspace">
+                <div class="drop-zone" id="img2pdf-drop-zone">
+                    <i class="fa-solid fa-images"></i>
+                    <h3>Choose images</h3>
+                    <input type="file" id="img2pdf-file-input" multiple accept="image/jpeg, image/png" hidden>
+                </div>
+                <div class="file-list" id="img2pdf-file-list"></div>
+                <div class="action-bar hidden" id="img2pdf-action-bar">
+                    <button class="btn btn-primary" id="btn-do-img2pdf">Convert to PDF <i class="fa-solid fa-chevron-right"></i></button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Tool: PDF to Images -->
+        <section id="view-pdf2img" class="view-section tool-container">
+            <div class="tool-header">
+                <h2>PDF to Images</h2>
+                <p>Extract all pages of a PDF into JPG images.</p>
+            </div>
+            <div class="workspace">
+                <div class="drop-zone" id="pdf2img-drop-zone">
+                    <i class="fa-solid fa-images"></i>
+                    <h3>Choose file</h3>
+                    <input type="file" id="pdf2img-file-input" accept="application/pdf" hidden>
+                </div>
+                <div class="file-preview" id="pdf2img-preview-area" style="display: none;">
+                    <p id="pdf2img-file-name"></p>
+                    <p style="margin-top:10px; color:var(--text-muted);">Each page will be converted to a JPG image and downloaded.</p>
+                </div>
+                <div class="action-bar hidden" id="pdf2img-action-bar">
+                    <button class="btn btn-primary" id="btn-do-pdf2img">Extract Images <i class="fa-solid fa-chevron-right"></i></button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Loading Overlay -->
+        <div id="loading-overlay" class="overlay hidden">
+            <div class="spinner"></div>
+            <p>Processing...</p>
+        </div>
+    </main>
+
+    <script src="app.js"></script>
+</body>
+</html>
