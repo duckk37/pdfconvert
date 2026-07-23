@@ -55,15 +55,112 @@ function renderDashboard() {
     });
 }
 
-// Global UI helpers
-function showLoading() {
-    document.getElementById('loading-overlay').classList.remove('hidden');
-}
+// ==========================================
+// TOAST NOTIFICATION SYSTEM
+// Replaces all alert() calls with elegant toasts
+// ==========================================
+const Toast = {
+    _container: null,
 
-function hideLoading() {
-    document.getElementById('loading-overlay').classList.add('hidden');
-}
+    _getContainer() {
+        if (!this._container) {
+            this._container = document.getElementById('toast-container');
+        }
+        return this._container;
+    },
 
+    /**
+     * Show a toast notification
+     * @param {string} message - The message to display
+     * @param {'success'|'error'|'warning'|'info'} type - Toast type
+     * @param {number} duration - Auto-dismiss in ms (default 4000)
+     */
+    show(message, type = 'info', duration = 4000) {
+        const container = this._getContainer();
+        const icons = {
+            success: 'fa-circle-check',
+            error: 'fa-circle-xmark',
+            warning: 'fa-triangle-exclamation',
+            info: 'fa-circle-info'
+        };
+
+        const toast = document.createElement('div');
+        toast.className = `toast ${type}`;
+        toast.innerHTML = `
+            <i class="fa-solid ${icons[type]} toast-icon"></i>
+            <span>${message}</span>
+        `;
+        container.appendChild(toast);
+
+        // Auto-dismiss
+        setTimeout(() => {
+            toast.classList.add('removing');
+            toast.addEventListener('animationend', () => toast.remove());
+        }, duration);
+    },
+
+    success(msg) { this.show(msg, 'success'); },
+    error(msg) { this.show(msg, 'error', 6000); },
+    warning(msg) { this.show(msg, 'warning', 5000); },
+    info(msg) { this.show(msg, 'info'); }
+};
+
+// ==========================================
+// PROGRESS BAR SYSTEM
+// Tracks multi-step operations (OCR, PDF rendering, etc.)
+// ==========================================
+const Progress = {
+    _overlay: null,
+    _progressEl: null,
+    _fillEl: null,
+    _statusEl: null,
+    _percentEl: null,
+    _textEl: null,
+
+    _init() {
+        this._overlay = document.getElementById('loading-overlay');
+        this._progressEl = document.getElementById('loading-progress');
+        this._fillEl = document.getElementById('progress-fill');
+        this._statusEl = document.getElementById('progress-status');
+        this._percentEl = document.getElementById('progress-percent');
+        this._textEl = document.getElementById('loading-text');
+    },
+
+    /** Show loading overlay with optional progress tracking */
+    show(withProgress = false) {
+        if (!this._overlay) this._init();
+        this._overlay.classList.remove('hidden');
+        this._progressEl.style.display = withProgress ? 'block' : 'none';
+        this._textEl.textContent = 'Processing...';
+        this.update(0, 'Starting...');
+    },
+
+    /** Update the progress bar (0-100) */
+    update(percent, statusText) {
+        if (!this._fillEl) this._init();
+        const clamped = Math.min(100, Math.max(0, Math.round(percent)));
+        this._fillEl.style.width = clamped + '%';
+        this._percentEl.textContent = clamped + '%';
+        if (statusText) this._statusEl.textContent = statusText;
+    },
+
+    /** Hide loading overlay and reset progress */
+    hide() {
+        if (!this._overlay) this._init();
+        this._overlay.classList.add('hidden');
+        this._progressEl.style.display = 'none';
+        this.update(0, '');
+    }
+};
+
+// Legacy aliases for backward compatibility
+function showLoading() { Progress.show(false); }
+function hideLoading() { Progress.hide(); }
+
+// ==========================================
+// MEMORY-SAFE DOWNLOAD UTILITY
+// Properly revokes Object URLs to prevent memory leaks
+// ==========================================
 function downloadBlob(blob, filename) {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -72,7 +169,8 @@ function downloadBlob(blob, filename) {
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+    // Schedule URL revocation after browser has time to initiate download
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
 // ==========================================
@@ -167,9 +265,10 @@ function setupMergeTool() {
             const mergedPdfFile = await mergedPdf.save();
             const blob = new Blob([mergedPdfFile], { type: 'application/pdf' });
             downloadBlob(blob, 'merged_document.pdf');
+            Toast.success(`Successfully merged ${mergeFiles.length} PDFs!`);
         } catch (error) {
             console.error(error);
-            alert("An error occurred while merging PDFs.");
+            Toast.error("An error occurred while merging PDFs.");
         } finally {
             hideLoading();
         }
@@ -254,7 +353,7 @@ function setupSplitTool() {
 
         } catch (error) {
             console.error(error);
-            alert("An error occurred while splitting PDF.");
+            Toast.error("An error occurred while splitting PDF.");
         } finally {
             hideLoading();
             // Reset state
@@ -377,12 +476,12 @@ function setupRemoveTool() {
             const totalPages = pdfDoc.getPageCount();
             
             if (pagesToRemove.size === 0) {
-                alert("No pages selected to remove.");
+                Toast.warning("No pages selected to remove.");
                 hideLoading();
                 return;
             }
             if (pagesToRemove.size >= totalPages) {
-                alert("You cannot remove all pages from the document.");
+                Toast.warning("You cannot remove all pages from the document.");
                 hideLoading();
                 return;
             }
@@ -406,7 +505,7 @@ function setupRemoveTool() {
 
         } catch (error) {
             console.error(error);
-            alert("An error occurred while removing pages.");
+            Toast.error("An error occurred while removing pages.");
         } finally {
             hideLoading();
             // Reset state
@@ -463,7 +562,7 @@ function createToolSetup(toolId, onProcess) {
             await onProcess(currentFile);
         } catch (error) {
             console.error(error);
-            alert(`An error occurred: ${error.message}`);
+            Toast.error(`An error occurred: ${error.message}`);
         } finally {
             hideLoading();
             currentFile = null;
@@ -769,7 +868,7 @@ function setupImg2pdfTool() {
             downloadBlob(blob, 'images_converted.pdf');
         } catch (error) {
             console.error(error);
-            alert("An error occurred while converting images.");
+            Toast.error("An error occurred while converting images.");
         } finally {
             hideLoading();
         }
@@ -792,9 +891,15 @@ function setupPdf2imgTool() {
         const pdfDoc = await loadingTask.promise;
         const totalPages = pdfDoc.numPages;
 
+        // Show progress bar for multi-page rendering
+        Progress.show(true);
+        Progress.update(0, `Rendering page 1 of ${totalPages}...`);
+
         for (let i = 1; i <= totalPages; i++) {
+            Progress.update((i / totalPages) * 100, `Rendering page ${i} of ${totalPages}...`);
+            
             const page = await pdfDoc.getPage(i);
-            const scale = 2.0; // Higher scale for better quality
+            const scale = 2.0;
             const viewport = page.getViewport({ scale: scale });
 
             const canvas = document.createElement('canvas');
@@ -802,20 +907,19 @@ function setupPdf2imgTool() {
             canvas.height = viewport.height;
             canvas.width = viewport.width;
 
-            const renderContext = {
-                canvasContext: context,
-                viewport: viewport
-            };
+            await page.render({ canvasContext: context, viewport: viewport }).promise;
 
-            await page.render(renderContext).promise;
-
-            // Convert canvas to blob and download
             const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', 0.9));
             downloadBlob(blob, `${file.name.replace('.pdf', '')}_page_${i}.jpg`);
             
-            // Small delay to prevent browser from blocking multiple downloads
+            // Release canvas memory immediately
+            canvas.width = 0;
+            canvas.height = 0;
+            
             await new Promise(r => setTimeout(r, 500));
         }
+
+        Toast.success(`Extracted ${totalPages} pages as images!`);
     });
 }
 
@@ -845,7 +949,7 @@ function setupScannerTool() {
             scannerActive.style.display = 'block';
         } catch (error) {
             console.error("Error accessing camera: ", error);
-            alert("Cannot access the camera. Please ensure permissions are granted.");
+            Toast.error("Cannot access the camera. Please ensure permissions are granted.");
         }
     });
 
@@ -924,7 +1028,7 @@ function setupScannerTool() {
             renderScannerFrames();
         } catch (error) {
             console.error(error);
-            alert("An error occurred while creating the PDF.");
+            Toast.error("An error occurred while creating the PDF.");
         } finally {
             hideLoading();
         }
@@ -974,7 +1078,7 @@ function setupExtractImgTool() {
             }
         } catch (error) {
             console.error(error);
-            alert("Error extracting images: " + error.message);
+            Toast.error("Error extracting images: " + error.message);
         } finally {
             hideLoading();
             document.getElementById('extract-img-action-bar').classList.add('hidden');
@@ -1064,7 +1168,7 @@ function setupSignTool() {
         blank.width = canvas.width;
         blank.height = canvas.height;
         if (canvas.toDataURL() === blank.toDataURL()) {
-            alert("Please draw your signature first.");
+            Toast.warning("Please draw your signature first.");
             return;
         }
 
@@ -1101,7 +1205,7 @@ function setupSignTool() {
             document.getElementById('sign-action-bar').classList.add('hidden');
         } catch (error) {
             console.error(error);
-            alert("Error signing PDF: " + error.message);
+            Toast.error("Error signing PDF: " + error.message);
         } finally {
             hideLoading();
         }
@@ -1130,7 +1234,7 @@ function setupConverterTool() {
 
     document.getElementById('btn-do-converter').addEventListener('click', async () => {
         if (!currentFile || typeof mammoth === 'undefined' || typeof html2pdf === 'undefined') {
-            alert("Required libraries are not loaded or file is missing.");
+            Toast.error("Required libraries are not loaded or file is missing.");
             return;
         }
         showLoading();
@@ -1165,7 +1269,7 @@ function setupConverterTool() {
             document.getElementById('converter-action-bar').classList.add('hidden');
         } catch (error) {
             console.error(error);
-            alert("Error converting DOCX to PDF: " + error.message);
+            Toast.error("Error converting DOCX to PDF: " + error.message);
         } finally {
             hideLoading();
         }
@@ -1195,19 +1299,21 @@ function setupOcrTool() {
 
     document.getElementById('btn-do-ocr').addEventListener('click', async () => {
         if (!currentFile || typeof Tesseract === 'undefined') {
-            alert("Tesseract.js is not loaded or file is missing.");
+            Toast.error("Tesseract.js is not loaded or file is missing.");
             return;
         }
-        showLoading();
+        Progress.show(true);
+        Progress.update(5, 'Initializing OCR engine...');
         try {
             const lang = document.getElementById('ocr-language').value;
             let imageSource = currentFile;
             
             // If PDF, render first page to get image data
             if (currentFile.type === 'application/pdf') {
+                Progress.update(10, 'Rendering PDF page...');
                 const arrayBuffer = await currentFile.arrayBuffer();
                 const pdf = await pdfjsLib.getDocument(arrayBuffer).promise;
-                const page = await pdf.getPage(1); // Only doing first page for OCR demo
+                const page = await pdf.getPage(1);
                 const viewport = page.getViewport({ scale: 2.0 });
                 const canvas = document.createElement('canvas');
                 const context = canvas.getContext('2d');
@@ -1215,20 +1321,36 @@ function setupOcrTool() {
                 canvas.height = viewport.height;
                 await page.render({ canvasContext: context, viewport: viewport }).promise;
                 imageSource = canvas.toDataURL('image/jpeg');
+                // Release canvas memory
+                canvas.width = 0;
+                canvas.height = 0;
             }
 
-            const worker = await Tesseract.createWorker(lang);
+            Progress.update(30, 'Loading AI model...');
+            const worker = await Tesseract.createWorker(lang, 1, {
+                logger: m => {
+                    // Tesseract reports progress 0-1 for 'recognizing text'
+                    if (m.status === 'recognizing text') {
+                        Progress.update(30 + m.progress * 65, `Recognizing text... ${Math.round(m.progress * 100)}%`);
+                    } else if (m.status) {
+                        Progress.update(30, m.status);
+                    }
+                }
+            });
             const ret = await worker.recognize(imageSource);
             await worker.terminate();
+            
+            Progress.update(100, 'Done!');
             
             const resultContainer = document.getElementById('ocr-result-container');
             const resultText = document.getElementById('ocr-result-text');
             resultContainer.classList.remove('hidden');
             resultText.value = ret.data.text;
+            Toast.success('Text recognition complete!');
             
         } catch (error) {
             console.error(error);
-            alert("Error running OCR: " + error.message);
+            Toast.error("Error running OCR: " + error.message);
         } finally {
             hideLoading();
         }
