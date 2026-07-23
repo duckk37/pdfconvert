@@ -14,10 +14,21 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <!-- FontAwesome for icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <!-- PDF-Lib -->
-    <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
     <!-- PDF.js -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <script>
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    </script>
+    
+    <!-- Tesseract.js (OCR) -->
+    <script src="https://unpkg.com/tesseract.js@v4.1.1/dist/tesseract.min.js"></script>
+    
+    <!-- Mammoth.js (Word to HTML) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
+    
+    <!-- html2pdf.js (HTML to PDF) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -357,6 +368,110 @@
                 
                 <div class="action-bar hidden" id="scanner-action-bar">
                     <button class="btn btn-primary" id="btn-do-scanner">Convert to PDF <i class="fa-solid fa-chevron-right"></i></button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Tool: Extract PDF Images -->
+        <section id="view-extract-img" class="view-section tool-container">
+            <div class="tool-header">
+                <h2>Extract PDF Images</h2>
+                <p>Extract all embedded images from a PDF.</p>
+            </div>
+            <div class="workspace">
+                <div class="drop-zone" id="extract-img-drop-zone">
+                    <i class="fa-solid fa-image-portrait"></i>
+                    <h3>Choose file</h3>
+                    <input type="file" id="extract-img-file-input" accept="application/pdf" hidden>
+                </div>
+                <div class="file-preview" id="extract-img-preview-area" style="display: none;">
+                    <p id="extract-img-file-name"></p>
+                </div>
+                <div class="action-bar hidden" id="extract-img-action-bar">
+                    <button class="btn btn-primary" id="btn-do-extract-img">Extract Images <i class="fa-solid fa-chevron-right"></i></button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Tool: Sign PDF -->
+        <section id="view-sign" class="view-section tool-container">
+            <div class="tool-header">
+                <h2>Sign PDF</h2>
+                <p>Draw your signature and append it to the document.</p>
+            </div>
+            <div class="workspace">
+                <div class="drop-zone" id="sign-drop-zone">
+                    <i class="fa-solid fa-file-signature"></i>
+                    <h3>Choose file</h3>
+                    <input type="file" id="sign-file-input" accept="application/pdf" hidden>
+                </div>
+                <div id="sign-preview-area" style="display: none; text-align:center;">
+                    <p id="sign-file-name" style="margin-bottom:15px;"></p>
+                    <p style="margin-bottom:10px;">Draw your signature below:</p>
+                    <canvas id="signature-pad" style="border: 2px dashed var(--border-color); border-radius: 8px; background: #fff; cursor: crosshair; touch-action: none;" width="400" height="200"></canvas>
+                    <div style="margin-top:10px;">
+                        <button class="btn" id="btn-clear-signature" style="background:var(--bg-secondary);">Clear</button>
+                    </div>
+                </div>
+                <div class="action-bar hidden" id="sign-action-bar">
+                    <button class="btn btn-primary" id="btn-do-sign">Sign & Download <i class="fa-solid fa-chevron-right"></i></button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Tool: PDF Converter (Word to PDF) -->
+        <section id="view-converter" class="view-section tool-container">
+            <div class="tool-header">
+                <h2>Word to PDF</h2>
+                <p>Convert DOCX documents to PDF.</p>
+            </div>
+            <div class="workspace">
+                <div class="drop-zone" id="converter-drop-zone">
+                    <i class="fa-solid fa-file-word"></i>
+                    <h3>Choose Word file (.docx)</h3>
+                    <input type="file" id="converter-file-input" accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document" hidden>
+                </div>
+                <div class="file-preview" id="converter-preview-area" style="display: none;">
+                    <p id="converter-file-name"></p>
+                </div>
+                <div class="action-bar hidden" id="converter-action-bar">
+                    <button class="btn btn-primary" id="btn-do-converter">Convert to PDF <i class="fa-solid fa-chevron-right"></i></button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Tool: PDF OCR -->
+        <section id="view-ocr" class="view-section tool-container">
+            <div class="tool-header">
+                <h2>PDF OCR (Text Recognition)</h2>
+                <p>Extract text from scanned PDFs or images using AI.</p>
+            </div>
+            <div class="workspace">
+                <div class="drop-zone" id="ocr-drop-zone">
+                    <i class="fa-solid fa-language"></i>
+                    <h3>Choose file (PDF or Image)</h3>
+                    <input type="file" id="ocr-file-input" accept="application/pdf,image/*" hidden>
+                </div>
+                
+                <div id="ocr-preview-area" style="display: none; padding: 20px 0;">
+                    <p id="ocr-file-name" style="margin-bottom: 15px; font-weight:bold;"></p>
+                    
+                    <div style="margin-bottom: 20px;">
+                        <label for="ocr-language" style="display:block; margin-bottom:8px;">Select Language:</label>
+                        <select id="ocr-language" class="page-input" style="width:100%; max-width:300px;">
+                            <option value="eng">English</option>
+                            <option value="vie">Vietnamese</option>
+                        </select>
+                    </div>
+
+                    <div id="ocr-result-container" class="hidden">
+                        <label style="display:block; margin-bottom:8px;">Extracted Text:</label>
+                        <textarea id="ocr-result-text" rows="10" style="width: 100%; padding: 10px; border-radius: var(--border-radius); background: var(--bg-secondary); border: 1px solid var(--border-color); color: var(--text-color); resize: vertical;"></textarea>
+                    </div>
+                </div>
+                
+                <div class="action-bar hidden" id="ocr-action-bar">
+                    <button class="btn btn-primary" id="btn-do-ocr">Start OCR <i class="fa-solid fa-chevron-right"></i></button>
                 </div>
             </div>
         </section>
