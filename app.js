@@ -1049,55 +1049,72 @@ function setupScannerTool() {
 }
 
 // ==========================================
-// EXTRACT PDF IMAGES LOGIC
+// SHARED: Drop Zone Helper (for tools that need custom file handling)
+// Adds click-to-pick + drag-and-drop to any drop zone
 // ==========================================
-function setupExtractImgTool() {
-    setupSingleFileInput('extract-img', async (file) => {
-        showLoading();
-        try {
-            const arrayBuffer = await file.arrayBuffer();
-            const pdf = await pdfjsLib.getDocument(arrayBuffer).promise;
-            
-            // To reliably extract images in JS without heavy deps, we'll convert pages to images.
-            // (True embedded image extraction requires parsing operators which is fragile).
-            // We'll reuse the robust canvas rendering for this.
-            
-            for (let i = 1; i <= pdf.numPages; i++) {
-                const page = await pdf.getPage(i);
-                const viewport = page.getViewport({ scale: 2.0 });
-                const canvas = document.createElement('canvas');
-                const context = canvas.getContext('2d');
-                canvas.width = viewport.width;
-                canvas.height = viewport.height;
-                
-                await page.render({ canvasContext: context, viewport: viewport }).promise;
-                
-                canvas.toBlob((blob) => {
-                    downloadBlob(blob, `extracted_page_${i}.jpg`);
-                }, 'image/jpeg', 0.9);
-            }
-        } catch (error) {
-            console.error(error);
-            Toast.error("Error extracting images: " + error.message);
-        } finally {
-            hideLoading();
-            document.getElementById('extract-img-action-bar').classList.add('hidden');
-            document.getElementById('extract-img-preview-area').style.display = 'none';
-            document.getElementById('extract-img-drop-zone').style.display = 'block';
+function setupDropZone(dropZoneEl, fileInputEl, onFilePicked) {
+    ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(evt => {
+        dropZoneEl.addEventListener(evt, e => { e.preventDefault(); e.stopPropagation(); }, false);
+    });
+    ['dragenter', 'dragover'].forEach(evt => {
+        dropZoneEl.addEventListener(evt, () => dropZoneEl.classList.add('dragover'), false);
+    });
+    ['dragleave', 'drop'].forEach(evt => {
+        dropZoneEl.addEventListener(evt, () => dropZoneEl.classList.remove('dragover'), false);
+    });
+    dropZoneEl.addEventListener('drop', e => {
+        const file = e.dataTransfer.files[0];
+        if (file) onFilePicked(file);
+    }, false);
+    dropZoneEl.addEventListener('click', () => fileInputEl.click());
+    fileInputEl.addEventListener('change', () => {
+        if (fileInputEl.files[0]) {
+            onFilePicked(fileInputEl.files[0]);
+            fileInputEl.value = '';
         }
-    }, 'btn-do-extract-img');
+    });
 }
 
 // ==========================================
-// SIGN PDF LOGIC
+// EXTRACT PDF IMAGES LOGIC (FIXED)
+// ==========================================
+function setupExtractImgTool() {
+    createToolSetup('extract-img', async (file) => {
+        const arrayBuffer = await file.arrayBuffer();
+        const pdf = await pdfjsLib.getDocument(arrayBuffer).promise;
+        const totalPages = pdf.numPages;
+
+        Progress.show(true);
+        Progress.update(0, `Extracting page 1 of ${totalPages}...`);
+
+        for (let i = 1; i <= totalPages; i++) {
+            Progress.update((i / totalPages) * 100, `Extracting page ${i} of ${totalPages}...`);
+            const page = await pdf.getPage(i);
+            const viewport = page.getViewport({ scale: 2.0 });
+            const canvas = document.createElement('canvas');
+            const context = canvas.getContext('2d');
+            canvas.width = viewport.width;
+            canvas.height = viewport.height;
+            await page.render({ canvasContext: context, viewport: viewport }).promise;
+            const blob = await new Promise(r => canvas.toBlob(r, 'image/jpeg', 0.9));
+            downloadBlob(blob, `extracted_page_${i}.jpg`);
+            canvas.width = 0;
+            canvas.height = 0;
+            await new Promise(r => setTimeout(r, 300));
+        }
+        Toast.success(`Extracted ${totalPages} images from PDF!`);
+    });
+}
+
+// ==========================================
+// SIGN PDF LOGIC (with drag-and-drop)
 // ==========================================
 function setupSignTool() {
     let currentFile = null;
     const canvas = document.getElementById('signature-pad');
     const ctx = canvas.getContext('2d');
     let isDrawing = false;
-    
-    // Set up canvas drawing
+
     ctx.lineWidth = 3;
     ctx.lineCap = 'round';
     ctx.strokeStyle = '#000';
@@ -1107,31 +1124,14 @@ function setupSignTool() {
         const clientX = e.touches ? e.touches[0].clientX : e.clientX;
         const clientY = e.touches ? e.touches[0].clientY : e.clientY;
         return {
-            x: clientX - rect.left,
-            y: clientY - rect.top
+            x: (clientX - rect.left) * (canvas.width / rect.width),
+            y: (clientY - rect.top) * (canvas.height / rect.height)
         };
     };
 
-    const startDrawing = (e) => {
-        isDrawing = true;
-        const pos = getPos(e);
-        ctx.beginPath();
-        ctx.moveTo(pos.x, pos.y);
-        e.preventDefault();
-    };
-
-    const draw = (e) => {
-        if (!isDrawing) return;
-        const pos = getPos(e);
-        ctx.lineTo(pos.x, pos.y);
-        ctx.stroke();
-        e.preventDefault();
-    };
-
-    const stopDrawing = () => {
-        isDrawing = false;
-        ctx.closePath();
-    };
+    const startDrawing = (e) => { isDrawing = true; const pos = getPos(e); ctx.beginPath(); ctx.moveTo(pos.x, pos.y); e.preventDefault(); };
+    const draw = (e) => { if (!isDrawing) return; const pos = getPos(e); ctx.lineTo(pos.x, pos.y); ctx.stroke(); e.preventDefault(); };
+    const stopDrawing = () => { isDrawing = false; ctx.closePath(); };
 
     canvas.addEventListener('mousedown', startDrawing);
     canvas.addEventListener('mousemove', draw);
@@ -1147,23 +1147,20 @@ function setupSignTool() {
 
     const fileInput = document.getElementById('sign-file-input');
     const dropZone = document.getElementById('sign-drop-zone');
-    
-    fileInput.addEventListener('change', (e) => {
-        if (e.target.files[0]) {
-            currentFile = e.target.files[0];
-            dropZone.style.display = 'none';
-            document.getElementById('sign-preview-area').style.display = 'block';
-            document.getElementById('sign-file-name').textContent = currentFile.name;
-            document.getElementById('sign-action-bar').classList.remove('hidden');
-        }
-    });
 
-    dropZone.addEventListener('click', () => fileInput.click());
+    function handleSignFile(file) {
+        if (!file) return;
+        currentFile = file;
+        dropZone.style.display = 'none';
+        document.getElementById('sign-preview-area').style.display = 'block';
+        document.getElementById('sign-file-name').textContent = currentFile.name;
+        document.getElementById('sign-action-bar').classList.remove('hidden');
+    }
+
+    setupDropZone(dropZone, fileInput, handleSignFile);
 
     document.getElementById('btn-do-sign').addEventListener('click', async () => {
         if (!currentFile) return;
-        
-        // Check if canvas is empty
         const blank = document.createElement('canvas');
         blank.width = canvas.width;
         blank.height = canvas.height;
@@ -1171,33 +1168,20 @@ function setupSignTool() {
             Toast.warning("Please draw your signature first.");
             return;
         }
-
         showLoading();
         try {
             const { PDFDocument } = PDFLib;
-            const arrayBuffer = await currentFile.arrayBuffer();
-            const pdfDoc = await PDFDocument.load(arrayBuffer);
-            
-            const signatureData = canvas.toDataURL('image/png');
-            const pngImage = await pdfDoc.embedPng(signatureData);
-            
-            const pages = pdfDoc.getPages();
-            const firstPage = pages[0];
+            const pdfDoc = await PDFDocument.load(await currentFile.arrayBuffer());
+            const pngImage = await pdfDoc.embedPng(canvas.toDataURL('image/png'));
+            const firstPage = pdfDoc.getPages()[0];
             const dims = firstPage.getSize();
-            
-            // Draw at bottom right
             firstPage.drawImage(pngImage, {
-                x: dims.width - 220,
-                y: 50,
-                width: 200,
-                height: 200 * (pngImage.height / pngImage.width),
+                x: dims.width - 220, y: 50,
+                width: 200, height: 200 * (pngImage.height / pngImage.width),
             });
-
-            const pdfBytes = await pdfDoc.save();
-            const blob = new Blob([pdfBytes], { type: 'application/pdf' });
+            const blob = new Blob([await pdfDoc.save()], { type: 'application/pdf' });
             downloadBlob(blob, `signed_${currentFile.name}`);
-            
-            // Reset
+            Toast.success('PDF signed successfully!');
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             currentFile = null;
             dropZone.style.display = 'block';
@@ -1213,24 +1197,23 @@ function setupSignTool() {
 }
 
 // ==========================================
-// CONVERTER LOGIC (Word to PDF)
+// CONVERTER LOGIC (Word to PDF) — with drag-and-drop
 // ==========================================
 function setupConverterTool() {
     let currentFile = null;
     const fileInput = document.getElementById('converter-file-input');
     const dropZone = document.getElementById('converter-drop-zone');
-    
-    fileInput.addEventListener('change', (e) => {
-        if (e.target.files[0]) {
-            currentFile = e.target.files[0];
-            dropZone.style.display = 'none';
-            document.getElementById('converter-preview-area').style.display = 'block';
-            document.getElementById('converter-file-name').textContent = currentFile.name;
-            document.getElementById('converter-action-bar').classList.remove('hidden');
-        }
-    });
 
-    dropZone.addEventListener('click', () => fileInput.click());
+    function handleConverterFile(file) {
+        if (!file) return;
+        currentFile = file;
+        dropZone.style.display = 'none';
+        document.getElementById('converter-preview-area').style.display = 'block';
+        document.getElementById('converter-file-name').textContent = currentFile.name;
+        document.getElementById('converter-action-bar').classList.remove('hidden');
+    }
+
+    setupDropZone(dropZone, fileInput, handleConverterFile);
 
     document.getElementById('btn-do-converter').addEventListener('click', async () => {
         if (!currentFile || typeof mammoth === 'undefined' || typeof html2pdf === 'undefined') {
@@ -1239,37 +1222,27 @@ function setupConverterTool() {
         }
         showLoading();
         try {
-            const arrayBuffer = await currentFile.arrayBuffer();
-            const result = await mammoth.convertToHtml({arrayBuffer: arrayBuffer});
-            const html = result.value;
-            
+            const result = await mammoth.convertToHtml({ arrayBuffer: await currentFile.arrayBuffer() });
             const tempDiv = document.createElement('div');
-            tempDiv.innerHTML = html;
-            tempDiv.style.padding = '40px';
-            tempDiv.style.background = '#fff';
-            tempDiv.style.color = '#000';
-            
-            document.body.appendChild(tempDiv); // Append temporarily
-            
-            const opt = {
-                margin:       1,
-                filename:     currentFile.name.replace('.docx', '.pdf'),
-                image:        { type: 'jpeg', quality: 0.98 },
-                html2canvas:  { scale: 2 },
-                jsPDF:        { unit: 'in', format: 'letter', orientation: 'portrait' }
-            };
-            
-            await html2pdf().set(opt).from(tempDiv).save();
+            tempDiv.innerHTML = result.value;
+            tempDiv.style.cssText = 'padding:40px;background:#fff;color:#000;';
+            document.body.appendChild(tempDiv);
+            await html2pdf().set({
+                margin: 1,
+                filename: currentFile.name.replace('.docx', '.pdf'),
+                image: { type: 'jpeg', quality: 0.98 },
+                html2canvas: { scale: 2 },
+                jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' }
+            }).from(tempDiv).save();
             document.body.removeChild(tempDiv);
-            
-            // Reset
+            Toast.success('DOCX converted to PDF successfully!');
             currentFile = null;
             dropZone.style.display = 'block';
             document.getElementById('converter-preview-area').style.display = 'none';
             document.getElementById('converter-action-bar').classList.add('hidden');
         } catch (error) {
             console.error(error);
-            Toast.error("Error converting DOCX to PDF: " + error.message);
+            Toast.error("Error converting DOCX: " + error.message);
         } finally {
             hideLoading();
         }
@@ -1277,25 +1250,24 @@ function setupConverterTool() {
 }
 
 // ==========================================
-// OCR LOGIC
+// OCR LOGIC — with drag-and-drop
 // ==========================================
 function setupOcrTool() {
     let currentFile = null;
     const fileInput = document.getElementById('ocr-file-input');
     const dropZone = document.getElementById('ocr-drop-zone');
-    
-    fileInput.addEventListener('change', (e) => {
-        if (e.target.files[0]) {
-            currentFile = e.target.files[0];
-            dropZone.style.display = 'none';
-            document.getElementById('ocr-preview-area').style.display = 'block';
-            document.getElementById('ocr-file-name').textContent = currentFile.name;
-            document.getElementById('ocr-action-bar').classList.remove('hidden');
-            document.getElementById('ocr-result-container').classList.add('hidden');
-        }
-    });
 
-    dropZone.addEventListener('click', () => fileInput.click());
+    function handleOcrFile(file) {
+        if (!file) return;
+        currentFile = file;
+        dropZone.style.display = 'none';
+        document.getElementById('ocr-preview-area').style.display = 'block';
+        document.getElementById('ocr-file-name').textContent = currentFile.name;
+        document.getElementById('ocr-action-bar').classList.remove('hidden');
+        document.getElementById('ocr-result-container').classList.add('hidden');
+    }
+
+    setupDropZone(dropZone, fileInput, handleOcrFile);
 
     document.getElementById('btn-do-ocr').addEventListener('click', async () => {
         if (!currentFile || typeof Tesseract === 'undefined') {
@@ -1307,21 +1279,17 @@ function setupOcrTool() {
         try {
             const lang = document.getElementById('ocr-language').value;
             let imageSource = currentFile;
-            
-            // If PDF, render first page to get image data
+
             if (currentFile.type === 'application/pdf') {
                 Progress.update(10, 'Rendering PDF page...');
-                const arrayBuffer = await currentFile.arrayBuffer();
-                const pdf = await pdfjsLib.getDocument(arrayBuffer).promise;
+                const pdf = await pdfjsLib.getDocument(await currentFile.arrayBuffer()).promise;
                 const page = await pdf.getPage(1);
                 const viewport = page.getViewport({ scale: 2.0 });
                 const canvas = document.createElement('canvas');
-                const context = canvas.getContext('2d');
                 canvas.width = viewport.width;
                 canvas.height = viewport.height;
-                await page.render({ canvasContext: context, viewport: viewport }).promise;
+                await page.render({ canvasContext: canvas.getContext('2d'), viewport }).promise;
                 imageSource = canvas.toDataURL('image/jpeg');
-                // Release canvas memory
                 canvas.width = 0;
                 canvas.height = 0;
             }
@@ -1329,7 +1297,6 @@ function setupOcrTool() {
             Progress.update(30, 'Loading AI model...');
             const worker = await Tesseract.createWorker(lang, 1, {
                 logger: m => {
-                    // Tesseract reports progress 0-1 for 'recognizing text'
                     if (m.status === 'recognizing text') {
                         Progress.update(30 + m.progress * 65, `Recognizing text... ${Math.round(m.progress * 100)}%`);
                     } else if (m.status) {
@@ -1339,25 +1306,23 @@ function setupOcrTool() {
             });
             const ret = await worker.recognize(imageSource);
             await worker.terminate();
-            
+
             Progress.update(100, 'Done!');
-            
-            const resultContainer = document.getElementById('ocr-result-container');
-            const resultText = document.getElementById('ocr-result-text');
-            resultContainer.classList.remove('hidden');
-            resultText.value = ret.data.text;
+            document.getElementById('ocr-result-container').classList.remove('hidden');
+            document.getElementById('ocr-result-text').value = ret.data.text;
             Toast.success('Text recognition complete!');
-            
         } catch (error) {
             console.error(error);
             Toast.error("Error running OCR: " + error.message);
         } finally {
-            hideLoading();
+            Progress.hide();
         }
     });
 }
 
-// Initialize
+// ==========================================
+// INITIALIZE ALL TOOLS
+// ==========================================
 document.addEventListener('DOMContentLoaded', () => {
     renderDashboard();
     setupMergeTool();
@@ -1378,3 +1343,4 @@ document.addEventListener('DOMContentLoaded', () => {
     setupConverterTool();
     setupOcrTool();
 });
+
