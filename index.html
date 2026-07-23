@@ -25,6 +25,12 @@
     <!-- Tesseract.js (OCR) -->
     <script src="https://unpkg.com/tesseract.js@v4.1.1/dist/tesseract.min.js"></script>
     
+    <!-- Transformers.js (Local AI) -->
+    <script type="module">
+        import { pipeline } from 'https://cdn.jsdelivr.net/npm/@xenova/transformers@2.17.1';
+        window.pipeline = pipeline; // Expose globally for our modular tools
+    </script>
+    
     <!-- Mammoth.js (Word to HTML) -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
     
@@ -466,15 +472,48 @@
                         </select>
                     </div>
 
-                    <div id="ocr-result-container" class="hidden">
-                        <label style="display:block; margin-bottom:8px;">Extracted Text:</label>
-                        <textarea id="ocr-result-text" rows="10" style="width: 100%; padding: 10px; border-radius: var(--border-radius); background: var(--bg-secondary); border: 1px solid var(--border-color); color: var(--text-color); resize: vertical;"></textarea>
+                    <div id="ocr-result-container" class="hidden" style="margin-top: 20px;">
+                        <textarea id="ocr-result-text" style="width: 100%; height: 200px; padding: 10px; background: var(--card-bg); color: var(--text-main); border: 1px solid var(--border-color); border-radius: 8px;" readonly></textarea>
                     </div>
                 </div>
                 
                 <div class="action-bar hidden" id="ocr-action-bar">
                     <button class="btn btn-primary" id="btn-do-ocr">Start OCR <i class="fa-solid fa-chevron-right"></i></button>
                 </div>
+            </div>
+        </section>
+
+        <!-- AI SUMMARIZE SECTION -->
+        <section id="ai-summarize" class="view-section hidden">
+            <button class="back-btn" onclick="navigateTo('dashboard')">
+                <i class="fa-solid fa-arrow-left"></i> Back to all tools
+            </button>
+            <div class="tool-header">
+                <h2><i class="fa-solid fa-robot"></i> AI Summarize (100% Offline)</h2>
+                <p>Extract and summarize PDF text entirely on your device.</p>
+            </div>
+            
+            <input type="file" id="ai-file-input" accept="application/pdf" style="display: none;">
+            <div class="drop-zone" id="ai-drop-zone">
+                <i class="fa-solid fa-file-pdf"></i>
+                <p>Choose file or drop PDF here</p>
+            </div>
+
+            <div id="ai-preview-area" style="display: none; text-align: center; margin-top: 20px;">
+                <p>Selected File: <strong id="ai-file-name"></strong></p>
+                <div class="action-bar hidden" id="ai-action-bar" style="justify-content: center; margin-top: 15px;">
+                    <button class="btn btn-primary" id="btn-do-ai">
+                        <i class="fa-solid fa-wand-magic-sparkles"></i> Summarize Document
+                    </button>
+                </div>
+            </div>
+
+            <div id="ai-result-container" class="hidden" style="margin-top: 20px;">
+                <h4 style="margin-bottom: 10px; color: var(--accent-color);">AI Summary:</h4>
+                <div id="ai-result-text" style="padding: 20px; background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 8px; line-height: 1.6;"></div>
+                <p style="font-size: 12px; color: var(--text-muted); margin-top: 10px;">
+                    <i class="fa-solid fa-shield-halved"></i> Processed entirely in your browser using Transformers.js. No data was sent to any server.
+                </p>
             </div>
         </section>
 

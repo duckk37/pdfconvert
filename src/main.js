@@ -3,6 +3,7 @@ import { setupMergeTool, setupSplitTool, setupRemoveTool, setupExtractTool, setu
 import { setupProtectTool, setupUnlockTool, setupWatermarkTool } from './tools/pdf-security.js';
 import { setupImg2pdfTool, setupPdf2imgTool, setupConverterTool, setupExtractImgTool } from './tools/pdf-converters.js';
 import { setupScannerTool, setupSignTool, setupOcrTool, setupPagenumTool } from './tools/pdf-advanced.js';
+import { setupAiTool } from './tools/pdf-ai.js';
 
 window.navigateTo = navigateTo;
 
@@ -28,4 +29,5 @@ document.addEventListener('DOMContentLoaded', () => {
     setupScannerTool();
     setupSignTool();
     setupOcrTool();
+    setupAiTool();
 });

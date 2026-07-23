@@ -6,6 +6,35 @@ function navigateTo(viewId) {
     window.scrollTo(0, 0);
 }
 
+const toolsList = [
+    { id: 'merge', name: 'Merge PDF', icon: 'fa-object-group', active: true },
+    { id: 'split', name: 'Split PDF', icon: 'fa-scissors', active: true },
+    { id: 'compress', name: 'Compress PDF', icon: 'fa-compress', active: false },
+    { id: 'edit', name: 'Edit PDF', icon: 'fa-pen', active: false },
+    { id: 'sign', name: 'Sign PDF', icon: 'fa-file-signature', active: true },
+    { id: 'converter', name: 'Word to PDF', icon: 'fa-file-word', active: true },
+    { id: 'img2pdf', name: 'Images to PDF', icon: 'fa-image', active: true },
+    { id: 'scanner', name: 'Camera Scanner', icon: 'fa-camera', active: true },
+    { id: 'pdf2img', name: 'PDF to Images', icon: 'fa-images', active: true },
+    { id: 'extract-img', name: 'Extract PDF images', icon: 'fa-image-portrait', active: true },
+    { id: 'protect', name: 'Protect PDF', icon: 'fa-lock', active: true },
+    { id: 'unlock', name: 'Unlock PDF', icon: 'fa-unlock', active: true },
+    { id: 'rotate', name: 'Rotate PDF pages', icon: 'fa-rotate-right', active: true },
+    { id: 'remove', name: 'Remove PDF pages', icon: 'fa-trash', active: true },
+    { id: 'extract', name: 'Extract PDF pages', icon: 'fa-file-export', active: true },
+    { id: 'rearrange', name: 'Rearrange PDF pages', icon: 'fa-layer-group', active: true },
+    { id: 'web2pdf', name: 'Webpage to PDF', icon: 'fa-globe', active: false },
+    { id: 'ocr', name: 'PDF OCR', icon: 'fa-language', active: true },
+    { id: 'watermark', name: 'Add watermark', icon: 'fa-droplet', active: true },
+    { id: 'pagenum', name: 'Add page numbers', icon: 'fa-list-ol', active: true },
+    { id: 'ai-summarize', name: 'AI Summarize', icon: 'fa-robot', active: true },
+    { id: 'overlay', name: 'PDF Overlay', icon: 'fa-clone', active: false },
+    { id: 'compare', name: 'Compare PDFs', icon: 'fa-code-compare', active: false },
+    { id: 'optimize', name: 'Web optimize PDF', icon: 'fa-gauge-high', active: false },
+    { id: 'redact', name: 'Redact PDF', icon: 'fa-eraser', active: false },
+    { id: 'create', name: 'Create PDF', icon: 'fa-file-circle-plus', active: false }
+];
+
 function renderDashboard() {
     const grid = document.getElementById('tools-grid');
     grid.innerHTML = '';
