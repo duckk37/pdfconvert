@@ -497,17 +497,14 @@
         <div class="toast-container" id="toast-container"></div>
     </main>
 
-    <script src="app.js"></script>
+    <script type="module" src="src/main.js"></script>
     <script>
+        // Register Service Worker
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
                 navigator.serviceWorker.register('sw.js')
-                    .then(registration => {
-                        console.log('ServiceWorker registration successful with scope: ', registration.scope);
-                    })
-                    .catch(error => {
-                        console.log('ServiceWorker registration failed: ', error);
-                    });
+                    .then(reg => console.log('SW registered!'))
+                    .catch(err => console.log('SW registration failed: ', err));
             });
         }
     </script>
