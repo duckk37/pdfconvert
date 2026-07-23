@@ -1,0 +1,17 @@
+{
+  "name": "PDF Tools",
+  "short_name": "PDF Tools",
+  "description": "Free and easy to use online PDF tools.",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#1a1b1e",
+  "theme_color": "#1a1b1e",
+  "icons": [
+    {
+      "src": "icon.svg",
+      "sizes": "192x192 512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

@@ -6,6 +6,7 @@ const toolsList = [
     { id: 'sign', name: 'Sign PDF', icon: 'fa-file-signature', active: false },
     { id: 'converter', name: 'PDF Converter', icon: 'fa-rotate', active: false },
     { id: 'img2pdf', name: 'Images to PDF', icon: 'fa-image', active: true },
+    { id: 'scanner', name: 'Camera Scanner', icon: 'fa-camera', active: true },
     { id: 'pdf2img', name: 'PDF to Images', icon: 'fa-images', active: true },
     { id: 'extract-img', name: 'Extract PDF images', icon: 'fa-image-portrait', active: false },
     { id: 'protect', name: 'Protect PDF', icon: 'fa-lock', active: true },
@@ -818,6 +819,131 @@ function setupPdf2imgTool() {
     });
 }
 
+// ==========================================
+// CAMERA SCANNER LOGIC
+// ==========================================
+let scannerFrames = [];
+let cameraStream = null;
+
+function setupScannerTool() {
+    const btnStartCamera = document.getElementById('btn-start-camera');
+    const scannerSetup = document.getElementById('scanner-setup');
+    const scannerActive = document.getElementById('scanner-active');
+    const video = document.getElementById('scanner-video');
+    const btnCapture = document.getElementById('btn-capture-frame');
+    const frameList = document.getElementById('scanner-frame-list');
+    const actionBar = document.getElementById('scanner-action-bar');
+    const btnDoScanner = document.getElementById('btn-do-scanner');
+
+    btnStartCamera.addEventListener('click', async () => {
+        try {
+            cameraStream = await navigator.mediaDevices.getUserMedia({ 
+                video: { facingMode: "environment" } 
+            });
+            video.srcObject = cameraStream;
+            scannerSetup.style.display = 'none';
+            scannerActive.style.display = 'block';
+        } catch (error) {
+            console.error("Error accessing camera: ", error);
+            alert("Cannot access the camera. Please ensure permissions are granted.");
+        }
+    });
+
+    btnCapture.addEventListener('click', () => {
+        const canvas = document.createElement('canvas');
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        
+        // Convert canvas to Data URL (base64) for preview and later PDF generation
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.9);
+        scannerFrames.push(dataUrl);
+        renderScannerFrames();
+    });
+
+    function renderScannerFrames() {
+        frameList.innerHTML = '';
+        scannerFrames.forEach((frame, index) => {
+            const item = document.createElement('div');
+            item.className = 'file-item';
+            item.style.justifyContent = 'space-between';
+            item.innerHTML = `
+                <div style="display:flex; align-items:center;">
+                    <img src="${frame}" style="height:40px; width:auto; border-radius:4px; margin-right:10px;">
+                    <span>Scanned Page ${index + 1}</span>
+                </div>
+                <button class="remove-btn" onclick="removeScannerFrame(${index})">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            `;
+            frameList.appendChild(item);
+        });
+
+        if (scannerFrames.length > 0) {
+            actionBar.classList.remove('hidden');
+        } else {
+            actionBar.classList.add('hidden');
+        }
+    }
+
+    window.removeScannerFrame = (index) => {
+        scannerFrames.splice(index, 1);
+        renderScannerFrames();
+    };
+
+    btnDoScanner.addEventListener('click', async () => {
+        if (scannerFrames.length === 0) return;
+        showLoading();
+        
+        try {
+            const { PDFDocument } = PDFLib;
+            const pdfDoc = await PDFDocument.create();
+
+            for (const dataUrl of scannerFrames) {
+                // Fetch the base64 string and convert to ArrayBuffer
+                const res = await fetch(dataUrl);
+                const arrayBuffer = await res.arrayBuffer();
+                
+                const image = await pdfDoc.embedJpg(arrayBuffer);
+                const page = pdfDoc.addPage([image.width, image.height]);
+                page.drawImage(image, {
+                    x: 0,
+                    y: 0,
+                    width: image.width,
+                    height: image.height,
+                });
+            }
+
+            const pdfBytes = await pdfDoc.save();
+            const blob = new Blob([pdfBytes], { type: 'application/pdf' });
+            downloadBlob(blob, 'scanned_document.pdf');
+            
+            // Clean up
+            scannerFrames = [];
+            renderScannerFrames();
+        } catch (error) {
+            console.error(error);
+            alert("An error occurred while creating the PDF.");
+        } finally {
+            hideLoading();
+        }
+    });
+
+    // Cleanup camera when switching tools
+    const originalNavigateTo = window.navigateTo || function(){};
+    window.navigateTo = function(toolId) {
+        if (toolId !== 'scanner' && cameraStream) {
+            cameraStream.getTracks().forEach(track => track.stop());
+            cameraStream = null;
+            scannerSetup.style.display = 'block';
+            scannerActive.style.display = 'none';
+            video.srcObject = null;
+        }
+        originalNavigateTo(toolId);
+    };
+}
+
 // Initialize
 document.addEventListener('DOMContentLoaded', () => {
     renderDashboard();
@@ -833,4 +959,5 @@ document.addEventListener('DOMContentLoaded', () => {
     setupRearrangeTool();
     setupImg2pdfTool();
     setupPdf2imgTool();
+    setupScannerTool();
 });

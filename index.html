@@ -4,6 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>PDF Tools - Free PDF solutions</title>
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#1a1b1e">
+    <link rel="apple-touch-icon" href="icon.svg">
     <!-- Google Fonts: Inter -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -331,6 +335,32 @@
             </div>
         </section>
 
+        <!-- Tool: Camera Scanner -->
+        <section id="view-scanner" class="view-section tool-container">
+            <div class="tool-header">
+                <h2>Camera Scanner</h2>
+                <p>Scan documents using your device's camera.</p>
+            </div>
+            <div class="workspace">
+                <div id="scanner-setup" style="text-align:center; padding: 20px;">
+                    <button class="btn btn-primary" id="btn-start-camera"><i class="fa-solid fa-camera"></i> Start Camera</button>
+                </div>
+                
+                <div id="scanner-active" style="display: none; position: relative;">
+                    <video id="scanner-video" autoplay playsinline style="width: 100%; max-height: 400px; background: #000; border-radius: var(--border-radius);"></video>
+                    <div style="text-align: center; margin-top: 10px;">
+                        <button class="btn btn-primary" id="btn-capture-frame" style="border-radius: 50%; width: 60px; height: 60px; padding: 0;"><i class="fa-solid fa-camera"></i></button>
+                    </div>
+                </div>
+
+                <div class="file-list" id="scanner-frame-list" style="margin-top: 20px;"></div>
+                
+                <div class="action-bar hidden" id="scanner-action-bar">
+                    <button class="btn btn-primary" id="btn-do-scanner">Convert to PDF <i class="fa-solid fa-chevron-right"></i></button>
+                </div>
+            </div>
+        </section>
+
         <!-- Loading Overlay -->
         <div id="loading-overlay" class="overlay hidden">
             <div class="spinner"></div>
@@ -339,5 +369,18 @@
     </main>
 
     <script src="app.js"></script>
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('sw.js')
+                    .then(registration => {
+                        console.log('ServiceWorker registration successful with scope: ', registration.scope);
+                    })
+                    .catch(error => {
+                        console.log('ServiceWorker registration failed: ', error);
+                    });
+            });
+        }
+    </script>
 </body>
 </html>
